@@ -1,0 +1,85 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+</head>
+<body>
+
+</body>
+</html>
+
+<!-- Bar Graph Widget Help Markdown -->
+<link rel="stylesheet" type="text/css" media="all" href="/help/markdown_styles.css"/>
+<br>
+
+# Generic Widget
+
+
+___
+<div class="column-container">
+<div class="column row-container" style="width:65%">
+
+
+## About
+Description of widget here
+
+</div>
+
+<div class="column row-container">
+<img src="/images/help/">
+</div>
+</div>
+
+___
+
+<div class="column-container">
+<div class="column row-container" style="width:80%;">
+
+## Widget Properties
+| Property | Description |
+| -------- | ----------- |
+| Insert Property Name | Insert Description |
+
+</div>
+<div class="column row-container">
+<img src="/images/help/">
+</div>
+</div>
+
+
+<div class="column-container">
+<div class="column row-container" style="width:80%;">
+
+## Client Input Events
+| Event | Description |
+| ----- | ----------- |
+| Receive Value | Sets the value of the bar graph to the received value. |
+
+</div>
+<div class="column row-container">
+<img src="/images/help/">
+</div>
+</div>
+
+
+<div class="column-container">
+<div class="column row-container" style="width:80%;">
+
+## Server Input Events
+| Event | Description |
+| ----- | ----------- |
+|  |  |
+
+</div>
+<div class="column row-container">
+<img src="/images/help/">
+</div>
+</div>
+
+Click [here](http:www.google.com "API Info") for more detailed API information.
+
+#### Tips
+>
+
+---
