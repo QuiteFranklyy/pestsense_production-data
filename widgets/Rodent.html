@@ -3640,10 +3640,11 @@
                 return;
             }
 
-            
+            console.log("User name is " + user);
             var user = fw.func("GETUSER");
-            if(user !== "admin")
+            if(user !== "admin" && user !== "devadmin@pestsense.com")  ///
             {
+                console.log("User name Inside if statement");
                 row.Card.querySelector("[data-info='r1']").style.setProperty("display","none");
                 row.Card.querySelector("[data-info='r2']").style.setProperty("display","none");
                 row.Card.querySelector("[data-info='r3']").style.setProperty("display","none");
@@ -5239,39 +5240,54 @@
                                 }
                                 break;
                                 
-                            // case "CommunicationError":
-                            //     // TODO remove this case once ErrorCodeFlag has been fully implemented
-                            //     if (collection.data[rowKeys[i]][j] !== "" ) {
+                                case "CommunicationError":
+                                // TODO remove this case once ErrorCodeFlag has been fully implemented - presumably damien did this, sebastian is now putting it back in.
+                                // communication error and error code flag have been modified on the app server temporarily to
+                                // fix an issue with the communication error not displaying. These changes will be ovewritten
+                                // on the next production push
+                                if (collection.data[rowKeys[i]][j] !== "" ) {
+                                    console.log("first: " + collection.data[rowKeys[i]][j]);
+                                    console.log("second: " + collection.data[rowKeys[i]][20]);
+                                    debugger;
                                       
-                            //         if (collection.data[rowKeys[i]][j] === "1" && collection.data[rowKeys[i]][20] === "1") {
-                            //             card.querySelector("[data-info='errorStatus']").style.setProperty("display", "");
-                            //             rowState[rowKeys[i]]["DeviceError"] = true;
+                                    if (collection.data[rowKeys[i]][j] === "1" && collection.data[rowKeys[i]][20] === "1") {
+                                        card.querySelector("[data-info='errorStatus']").style.setProperty("display", "");
+                                        rowState[rowKeys[i]]["CommunicationError"] = true;
 
-                            //         }
-                            //         else if (collection.data[rowKeys[i]][j] === "0" && collection.data[rowKeys[i]][20] === "1") {
-                            //             card.querySelector("[data-info='errorStatus']").style.setProperty("display", "none");
-                            //         }
-                            //         else if(collection.data[rowKeys[i]][j] === "2")
-                            //         {
-                            //             card.querySelector("[data-info='errorStatus']").style.setProperty("display", "");
-                            //             rowState[rowKeys[i]]["DeviceError"] = true;
-                            //         }
-                            //     }
-                            //     else {
-                            //         card.querySelector("[data-info='errorStatus']").style.setProperty("display", "none");
-                            //         rowState[rowKeys[i]]["DeviceError"] = false;
-                            //     }
-                            //     break;
+                                    }
+                                    else if (collection.data[rowKeys[i]][j] === "0" && collection.data[rowKeys[i]][20] === "1") {
+                                        card.querySelector("[data-info='errorStatus']").style.setProperty("display", "none");
+                                    }
+                                    else if(collection.data[rowKeys[i]][j] === "2")
+                                    {
+                                        card.querySelector("[data-info='errorStatus']").style.setProperty("display", "");
+                                        rowState[rowKeys[i]]["CommunicationError"] = true;
+                                    }
+                                }
+                                else {
+                                    card.querySelector("[data-info='errorStatus']").style.setProperty("display", "none");
+                                    rowState[rowKeys[i]]["CommunicationError"] = false;
+                                }
+                                break;
+
                             case "ErrorCodeFlag":
                                 if (collection.data[rowKeys[i]][j] !== "" ) {
                                     if (collection.data[rowKeys[i]][j] === "1") {
                                         card.querySelector("[data-info='errorStatus']").style.setProperty("display", "");
                                         rowState[rowKeys[i]]["DeviceError"] = true;
                                     } else if (collection.data[rowKeys[i]][j] === "0") {
+                                        // check if the communication error has been set. If so, don't remove the icon
+                                        if (rowState[rowKeys[i]]["CommunicationError"] == true) {
+                                            break;
+                                        }
                                         card.querySelector("[data-info='errorStatus']").style.setProperty("display", "none");
                                         rowState[rowKeys[i]]["DeviceError"] = false;
                                     }
                                 } else {
+                                    // check if the communication error has been set. If so, don't remove the icon
+                                    if (rowState[rowKeys[i]]["CommunicationError"] == true) {
+                                        break;
+                                    }
                                     card.querySelector("[data-info='errorStatus']").style.setProperty("display", "none");
                                     rowState[rowKeys[i]]["DeviceError"] = false;
                                 }
