@@ -70,13 +70,12 @@
         </div>
     </div>
 
-
-    <script src="api/DataTypes.js"></script>
+    <!-- <script src="api/DataTypes.js"></script> -->
     <script src="api/Database.js"></script>
     <script src="api/Script.js"></script>
     <script src="api/Utils.js"></script>
     <script src="api/ClientEvents.js"></script>
-
+    <script src="api/Client.js"></script>
 
     <script>
         "use strict";
@@ -103,10 +102,14 @@
                     "set css": addStyles,
                     "set html": addHtml,
                     "handle generic": handleGeneric,
-                    "set action": setAction
+                    "set action": setAction,
+                    "manage map": manageMap,
+                    "toggle element visibility": toggleElementVisibility,
+                    "click floor map toggle": clickFloorMapToggle
                 },
                 outputEvents: [
-                    "EditCard"
+                    "EditCard",
+                    "UploadFile"
                 ]
             },
             serverEvents: {
@@ -134,6 +137,7 @@
 
 
         var cardSelected;
+        var editMapValue = 0;
 
 
         /**
@@ -354,6 +358,86 @@
                 SetToggleInactive(eventData, "OFF");
             }
         }
+        function ChangeActiveMode(eventData) {
+             if (eventData.value === "All") {
+                handleGeneric(`FilterFor|All`);
+             }
+             else {
+                handleGeneric(`FilterFor|Active`);
+             }
+         }
+        function ChangeSort(eventData) {
+            if (eventData.value === "Sort By Station Id") {
+                fw.func("PUBLISHCLIENT", "SortBy", {
+                    value: ["StationId", "true"]
+                });
+            } else if (eventData.value === "Sort By Status") {
+                fw.func("PUBLISHCLIENT", "SortBy", {
+                    value: ["State", "false"]
+                });
+            }
+        }
+
+        /**
+        * Manage how the map is being controlled.
+        */
+        function manageMap(event){
+
+            editMapValue = parseInt(event.value);
+            console.log("Map edit in the generic is " + editMapValue);
+        }
+
+        function ToggleFloorPlan(eventData) {
+            var toggle = eventData.querySelector('[data-value="floorPlanSelect"]');
+            var currentClass = toggle.classList[0];
+            let floorMapUploadBtn = document.getElementById('floorMapUploadBtn');
+            if (currentClass === "inactiveToggle") {
+                eventData.querySelector('[data-value="floorPlanCheckbox"]').checked = true;
+                toggle.innerHTML = "ON";
+                toggle.setAttribute("class", "activeToggle");
+                if(editMapValue === 1) {
+                    console.log("Map edit in the generic is on click " + editMapValue);
+                    floorMapUploadBtn.style.visibility = 'visible';
+                }
+                //floorMapUploadBtn.style.visibility = 'visible';
+                fw.func("HIDEWIDGET", "PickSlider#0");
+                fw.func("HIDEWIDGET", "Label#40");
+                fw.func("HIDEWIDGET", "Graph#0");
+                fw.func("HIDEWIDGET", "Graph#2");
+                fw.func("HIDEWIDGET", "Graph#3");
+                fw.func("HIDEWIDGET", "Graph#1");
+                fw.func("HIDEWIDGET", "Graph#4");
+                fw.func("HIDEWIDGET", "Graph#5");
+                fw.func("HIDEWIDGET", "Graph#6");
+                fw.func("SHOWWIDGET", "DeviceLevelFoorMap");
+            }
+            else {
+                eventData.querySelector('[data-value="floorPlanCheckbox"]').checked = false;
+                toggle.innerHTML = "OFF";
+                toggle.setAttribute("class", "inactiveToggle");
+                floorMapUploadBtn.style.visibility = 'hidden';
+                fw.func("SHOWWIDGET", "PickSlider#0");
+                fw.func("SHOWWIDGET", "Label#40");
+                fw.func("SHOWWIDGET", "Graph#0");
+                fw.func("SHOWWIDGET", "Graph#2");
+                fw.func("SHOWWIDGET", "Graph#3");
+                fw.func("SHOWWIDGET", "Graph#1");
+                fw.func("SHOWWIDGET", "Graph#4");
+                fw.func("SHOWWIDGET", "Graph#5");
+                fw.func("SHOWWIDGET", "Graph#6");
+                fw.func("HIDEWIDGET", "DeviceLevelFoorMap");
+                fw.func("HIDEWIDGET", "SaveFloorMap");
+            }
+        }
+
+        function UploadFloorPlan(element) {
+            fw.fireEvent("UploadFile", "true");
+        }
+
+        function EditFloorPlan(element) {
+            fw.func("PUBLISHCLIENT", "edit-floor-plan", 1);
+            fw.func("SHOWWIDGET", "SaveFloorMap");
+        }
 
         function toggleSearchBar(eventData) {
             console.log(eventData);
@@ -362,14 +446,18 @@
             let filledFunnel = eventData.getElementsByClassName("bi-funnel-fill")[0];
             let funnel =  eventData.getElementsByClassName("bi-funnel")[0];
             let searchBar = document.getElementById("filterSearchInputContainer");
+            let filterContainer = document.getElementById("filterContainer");
+            let pageName = document.getElementById('PageName');
 
             filledFunnel.style.display = (window.getComputedStyle(filledFunnel).display === "none") ? "" : "none";
             funnel.style.display = (window.getComputedStyle(funnel).display === "none") ? "" : "none";
             searchBar.style.display = (window.getComputedStyle(searchBar).display === "none") ? "" : "none";
+            filterContainer.style.display = (window.getComputedStyle(filterContainer).display === "none") ? "" : "none";
+            pageName.style.display = (window.getComputedStyle(pageName).display === "none") ? "" : "none";
 
-            fw.func("ADJUSTSIZE", "HEIGHT", (window.getComputedStyle(searchBar).display === "none") ? 75 : 120);
+            fw.func("ADJUSTSIZE", "HEIGHT", (window.getComputedStyle(searchBar).display === "none") ? 75 : 145);
             handleGeneric(`AdjustSize|${(window.getComputedStyle(searchBar).display === "none") ? '-45px' : '45px'}`)
-            document.getElementById("navContainer").style.setProperty("height", (window.getComputedStyle(searchBar).display === "none" ? "68%" : "50%"));
+            document.getElementById("navContainer").style.setProperty("height", (window.getComputedStyle(searchBar).display === "none" ? "68%" : "30%"));
         }
 
         function handleSearchInput() {
@@ -400,6 +488,13 @@
             toggle.setAttribute("class", "inactiveToggle");
             fw.fireEvent("EditCard", "false");
         }
+
+        async function DeleteFloorPlan(element) {
+            const res = await Client.confirm('Do you want to delete Floor Map.');
+            if(res)
+                fw.func("PUBLISHCLIENT", "delete-floor-map", true);
+        }
+
         /**
         * Assigns an incoming html template over the generic widget as main view structure
         *
@@ -427,6 +522,25 @@
         */
         function clearContent() {
             document.getElementById("container").innerHTML = "";
+        }
+
+        /**
+        * Toggles visibility of the provided
+        */
+        function toggleElementVisibility(packet) {
+            let data = packet.value;
+            if(data.id){
+                const element = document.getElementById(data.id);
+                if(element)
+                    element.style.visibility = data.visibility;
+            }
+        }
+
+        /**
+        * Toggles floor map
+        */
+        function clickFloorMapToggle(packet) {
+            document.querySelector('[data-value="floorPlanCheckbox"]').parentElement.parentElement.click();
         }
 
         // API actions for dashboard mode

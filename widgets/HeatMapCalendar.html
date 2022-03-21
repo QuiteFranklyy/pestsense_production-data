@@ -217,6 +217,7 @@
         </div>
      </div>
      <script src="../js/utilities.js"></script>
+     <script src="/widgets/api/Database.js"></script>
 
     <script>
         "use strict";
@@ -247,7 +248,8 @@
                     "receive value": receiveValue,
                     "getvalue": getValue,
                     "SubscribeData":SubscribeData,
-                    "ClearData":ClearData
+                    "ClearData":ClearData,
+                    "SetLegend":SetLegend
                 },
                 outputEvents: [
                     "SubDomainClicked",
@@ -346,6 +348,7 @@
         var loading = 0; //Holds the expected data to load;
         var LoadingDeviceData = false;
         var widgetStartDate =new Date().addDays(-150);
+        var legend = [10, 20];
 
         InitWidget();
         var DataSourceName;
@@ -403,7 +406,8 @@
                 previousSelector: "#graph-browse-previous",
 	            nextSelector: "#graph-browse-next",	
           	   // range : range,					// Just display 3 months
-              //  scale: [40, 60, 80, 100] ,	// Custom threshold for the scale,
+            //    scale: legend ,	// Custom threshold for the scale,
+                legend: legend,
                 onClick: function(date, nb) {
                     SubDomainClicked(date,nb);
                 }
@@ -411,17 +415,16 @@
           //  calendar.jumpTo(new Date(2000, 4));
 
 
-            var getElem = document.getElementsByClassName("r4 q4");
-            getElem[0].style.setProperty("display","None");
-            var getEl2 = document.getElementsByClassName("r5 q5");
-            getEl2[0].style.setProperty("display","None");
+            // var getElem = document.getElementsByClassName("r4 q4");
+            // getElem[0].style.setProperty("display","None");
+            // var getEl2 = document.getElementsByClassName("r5 q5");
+            // getEl2[0].style.setProperty("display","None");
 
 	    }
              
         //Forwards an output event when selecting a square in the subdomain category.
         function SubDomainClicked(currentDate, data)
         {
-             debugger
             var myWebWorked = new Worker("js/LoadData.js", { type: "module" });
             var collection = new SensaCollection(["Id", "date time","device name","location name", "location details","motion count","bait taken","timestamp"], "Id");
             myWebWorked.onmessage = WorkerResult;
@@ -475,6 +478,18 @@
             InitWidget([]);
         }
 
+        function SetLegend(eventData) {
+            const settings = eventData.value.getFirst();
+            const heatMapSettings = JSON.parse(settings.Value);
+            if (subDomain === "hour") {
+                legend = [heatMapSettings.CHMHourGreenThreshold,
+                heatMapSettings.CHMHourAmberThreshold];
+            } else {
+                legend = [heatMapSettings.CHMDayGreenThreshold,
+                heatMapSettings.CHMDayAmberThreshold];
+            }
+        }
+
         function SubscribeData(eventData)
         {
               
@@ -520,7 +535,7 @@
                 }
                 loading += 2; // Add two for each device channel that has to be loaded.
                 fw.func("history", "PESTCO/RODENTS/" + x.Device.toUpperCase() + "/BAITTAKEN", "BAITTAKEN", startDate, end);         // request data from server
-                fw.func("history", "PESTCO/RODENTS/" + x.Device.toUpperCase() + "/COUNTERTOTAL", "COUNTERTOTAL", startDate, end);         // request data from server
+                fw.func("history", "PESTCO/RODENTS/" + x.Device.toUpperCase() + "/CYCLETOTAL", "CYCLETOTAL", startDate, end);         // request data from server
 
             });
           
@@ -647,7 +662,7 @@
                 AddBaitTaken(data.value, deviceName[2]);
             }
             
-            else if (deviceName[3] === "COUNTERTOTAL") {
+            else if (deviceName[3] === "CYCLETOTAL") {
                 tsReturned = false;
                 AddCounter(data.value, deviceName[2]);
             }

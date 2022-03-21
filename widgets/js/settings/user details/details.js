@@ -10,7 +10,7 @@
  */
 
 
-const tzStrings = [
+ const tzStrings = [
 	{label:"(GMT-12:00) International Date Line West","value":"Etc/GMT+12"},
 	{label:"(GMT-11:00) Midway Island, Samoa","value":"Pacific/Midway"},
 	{label:"(GMT-10:00) Hawaii","value":"Pacific/Honolulu"},
@@ -347,7 +347,7 @@ function load() {
 	var deleteAccountIcon = Script.getWidget("deleteAccountIcon");
 	deleteAccountIcon.subscribe("pressed", async function () {
 		var form = Script.getFormByKey("details");
-		let res = await Client.confirm(`Are you sure you want to delete thie user ${form.username}?`, "Delete User", { confirmText: "Delete" });
+		let res = await Client.confirm(`Are you sure you want to delete this user ${form.username}?`, "Delete User", { confirmText: "Delete" });
 		if (res) {
 			Directory.deleteUser(form.username, async function (eventData) {
 				if (eventData.value !== 1) {
@@ -393,6 +393,8 @@ function load() {
 	var countryDropdown = Script.getWidget("countryDropdown");
 	var coll = new SensaCollection(["text", "value"], "text", {});
 	var data = countryList.map(country => ({text: country.name, value: country.code}));
+
+    populateAllUserAccessRoles();
 	
 	for (var i = 0;i<data.length;i++) {
 		coll.add(data[i]);
@@ -420,12 +422,13 @@ function load() {
 		accDrop.receiveValue(accountName);
 
 		if (user != null) {
+			console.log("updating the form");
 			updateForm(user);
 		}
 
 		// Setup Permissions table.
 		var permCollection = new SensaCollection(["permission"], "permission");
-		var permissions = Object.keys(Directory.permissions);
+		// var permissions = Object.keys(Directory.permissions);
 		var userPermsTable = Script.getWidget("userPermsTable");
 		var setPerms = [];
 
@@ -433,12 +436,12 @@ function load() {
 			var perms = SensaCollection.load(data.value);
 			var userPerms = perms.data[user];
 
-			for (var i = 0; i < permissions.length; i++) {
+			for (var i = 1; i < perms.columns.length; i++) {
 				permCollection.add({
-					permission: permissions[i],
+					permission: perms.columns[i].toUpperCase(),
 				});
-				if (userPerms[i + 1] == '1') {
-					setPerms.push(permissions[i]);
+				if (userPerms[i] == '1') {
+					setPerms.push(perms.columns[i].toUpperCase());
 				}
 			}
 			userPermsTable.receiveValue(permCollection);
@@ -478,8 +481,14 @@ async function save() {
 	let res = await Client.confirm("Are you sure you would like to save these changes?", "Save User Information", {confirmText: "Save"})
     if (res) {
         var formData = Script.getFormByKey("details");
+        if (formData.accessrole === "no role"){
+            formData.accessrole = 0;
+        }
 
-        if (formData === null) return;
+        if (formData === null) {
+            alert("Please fill out all required fields");
+            return;
+        }
         formData.status = formData.status === true ? 1 : 0;
         formData.username = Script.getState("user");
 
@@ -503,20 +512,8 @@ async function save() {
 
         // set last modified, format date in similar way to server 
         let today = new Date();
-        let month = today.getMonth() + 1;
-        month = month < 10 ? '0' + month : month;
-        let date = today.getDate() + '/' + month + '/'+today.getFullYear();
-        let hours = today.getHours();
-        let minutes = today.getMinutes();
-        let seconds = today.getSeconds();
-        var ampm = today.getHours() >= 12 ? "PM" : "AM";
-        hours = hours ? hours : 12; // make hour 0 become 12
-        minutes = minutes < 10 ? '0' + minutes : minutes;
-        seconds = seconds < 10 ? '0' + seconds : seconds;
-        let time = hours + ":" + minutes + ":" + seconds;
-        let dateTime = date + ' ' + time + ' ' + ampm;
-        // TODO find a way to use formatDate() from utils
-        formData.lastmodified = dateTime;
+        today = Utils.formatDate(today, "dd/MM/yyyy HH:mm", false);
+        formData.lastmodified = today;
 
         delete formData.accountname;
 
@@ -570,5 +567,95 @@ function updateForm(username) {
 	collection = SensaCollection.load(collection);
 	var record = collection.get(username);
 	record.status = record.status == "Yes" ? 1 : 0;
-	Script.setForm("details", record);
+
+    if (record.alias == null || record.alias === "") {
+        // If a previous user did not have an alias, create one now
+        record.alias = `${record.first} ${record.last}`;
+        var req = {};
+        req[record] = record;
+        Database.updateEntity("Directory", "users", req, () => {Script.setForm("details", record)});
+        Log.info("Setting user alias information.");
+        return;
+    }
+
+    // rename the accessrole to be the text value instead of the ID
+    var accessRoleId = record.accessrole;
+	console.log("Access role id: " + accessRoleId + " TYPE: " + typeof accessRoleId);
+    if (accessRoleId === undefined || accessRoleId === null || accessRoleId === "" || accessRoleId === "no role") {
+        // hasn't been set, don't try to find a name for it
+        console.log("No access role was set for the user on load");
+		
+		record.accessrole = "no role";
+        Script.setForm("details", record);
+		
+		// if it was set to -1, then it was set to no role previously
+    } else if (accessRoleId === 0) {
+		console.log("access role was set to 0");
+		record.accessrole = "no role";
+        Script.setForm("details", record);
+		
+	} else {
+		console.log("attempting to get the access role name");
+        var filter = {
+            columns: "Id, RoleName",
+            filter: "Id=" + accessRoleId
+        };
+        Database.readRecords("rodent","UserAccessRole", function(eventData) {
+			try {
+				console.log("found the name for the access role");
+                var accessRoleCollection = SensaCollection.load(eventData.value);
+				var accessRoleName = accessRoleCollection.getFirst().RoleName;
+				record.accessrole = accessRoleName;
+                Script.setForm("details", record);
+			} catch (error) {
+				console.log("No access role found for the chosen access role id, please contact system admin");
+				record.accessrole = "no role";
+                Script.setForm("details", record);
+			}
+        },filter);
+    }
+    
+}
+
+
+function populateAllUserAccessRoles() {
+    	// Populate the Access Roles dropdown
+	var defaultRoleData = {
+		"text": "no role",
+		"value": 0
+	};
+	
+    // set the filter to read the user roles table
+    var UserRolesFilter = {
+        columns: "Id,User, CompanyId",
+        filter: 'User="' + Client.getUser() + '" and IsPrimary=1'
+    };
+	
+	var accessDrop = Script.getWidget("accessRole");
+	
+    Database.readRecords("rodent", "UserRoles", function(eventData) {
+        var CompanyId = eventData.value.getColumn("CompanyId");
+        // set the filter to read the user access roles table
+        var UserAccessRolesFilter = {
+            columns: "RoleName,ID",
+            filter: "CompanyId = " + CompanyId
+        };
+        Database.readRecords("rodent", "UserAccessRole", function(eventData) {
+            try{
+                // need to make a sensacollection containing the RoleName and ID, with the headers "text" and "value"
+                var accessRolesCollection = SensaCollection.load(eventData.value);
+                accessRolesCollection.setColumns(["text","value"]);
+
+                accessRolesCollection.add(defaultRoleData);
+                accessDrop.receiveTextValues(accessRolesCollection);
+            } catch (error) {
+                // if there was an error, then it was unable to find  a name for the chosen id. So just populate it with the default user role
+				console.log("error with trying to set default access role");
+                var accessRolesCollection = new SensaCollection(["text","value"], "text");
+                accessRolesCollection.add(defaultRoleData);
+                accessDrop.receiveTextValues(accessRolesCollection);
+            }
+        }, UserAccessRolesFilter);
+
+    }, UserRolesFilter);
 }
